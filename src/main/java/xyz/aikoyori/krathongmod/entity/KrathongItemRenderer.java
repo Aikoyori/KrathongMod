@@ -19,6 +19,7 @@ public class KrathongItemRenderer implements BuiltinItemRendererRegistry.Dynamic
         EntityRenderDispatcher entityRenderDispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
         KrathongEntity kt = new KrathongEntity(KrathongMod.KRATHONG_TYPE, MinecraftClient.getInstance().world);
         kt.getDataTracker().set(KrathongEntity.LIT,stack.getOrCreateNbt().getBoolean("lit"));
+        kt.getDataTracker().set(KrathongEntity.FLOWER_ITEM,ItemStack.fromNbt(stack.getOrCreateNbt().getCompound("flower_item")));
         entityRenderDispatcher.render(kt, 0.0d, 0.0d, 0.0d, 0.0F, 1.0F, matrices, vertexConsumers, light);
     }
 }

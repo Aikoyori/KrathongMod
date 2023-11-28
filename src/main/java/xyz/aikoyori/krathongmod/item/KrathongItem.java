@@ -6,6 +6,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -21,8 +23,16 @@ import java.util.Objects;
 public class KrathongItem extends Item {
     public KrathongItem(Settings settings) {
         super(settings);
+
     }
 
+    @Override
+    public ItemStack getDefaultStack() {
+        ItemStack stack = super.getDefaultStack();
+
+        stack.getOrCreateNbt().put("flower_item",Items.DANDELION.getDefaultStack().writeNbt(new NbtCompound()));
+        return stack;
+    }
 
     @Override
     public ActionResult useOnBlock(ItemUsageContext context) {
@@ -30,6 +40,8 @@ public class KrathongItem extends Item {
         Vec3d pos = context.getBlockPos().add(context.getSide().getVector()).toCenterPos();
         kt.setPos(pos.getX(), pos.getY(),pos.getZ());
         kt.getDataTracker().set(KrathongEntity.LIT,context.getStack().getOrCreateNbt().getBoolean("lit"));
+        kt.getDataTracker().set(KrathongEntity.FLOWER_ITEM,ItemStack.fromNbt(context.getStack().getOrCreateNbt().getCompound("flower_item")));
+        if(context.getStack().hasCustomName()) kt.setCustomName(context.getStack().getName());
         context.getWorld().spawnEntity(kt);
         Objects.requireNonNull(context.getPlayer()).getStackInHand(context.getHand()).decrement(1);
         return ActionResult.SUCCESS;
@@ -48,17 +60,23 @@ public class KrathongItem extends Item {
             if(!user.isCreative()) stack.damage(1, world.random, (ServerPlayerEntity) user);
             }
             samestack.getOrCreateNbt().putBoolean("lit",true);
+            return TypedActionResult.success(samestack);
         }
         else if(stack.getItem() == Items.FIRE_CHARGE)
         {
                 samestack.getOrCreateNbt().putBoolean("lit",true);
             stack.decrement(1);
             return TypedActionResult.success(samestack);
-        } if(stack.getItem() == Items.WATER_BUCKET)
+        } else if(stack.getItem() == Items.WATER_BUCKET)
         {
             samestack.getOrCreateNbt().putBoolean("lit",false);
             if(!user.isCreative())
                 user.setStackInHand(opposite,Items.BUCKET.getDefaultStack());
+            return TypedActionResult.success(samestack);
+        }
+        else if(stack.isIn(ItemTags.FLOWERS))
+        {
+            samestack.getOrCreateNbt().put("flower_item",stack.writeNbt(new NbtCompound()));
             return TypedActionResult.success(samestack);
         }
         return super.use(world,user,hand);

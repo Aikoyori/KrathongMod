@@ -13,14 +13,17 @@ import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.tag.FluidTags;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 import xyz.aikoyori.krathongmod.KrathongMod;
 
 public class KrathongEntity extends Entity {
@@ -75,7 +78,7 @@ public class KrathongEntity extends Entity {
         dataTracker.set(LIT,nbt.getBoolean("lit"));
         dataTracker.set(TICK_ALIVE,nbt.getInt("tick_alive"));
         dataTracker.set(TICK_INWATER,nbt.getInt("tick_in_water"));
-        dataTracker.set(FLOWER_ITEM,ItemStack.fromNbt(nbt.getCompound("flower")));
+        dataTracker.set(FLOWER_ITEM,ItemStack.fromNbt(nbt.getCompound("flower_item")));
     }
 
     @Override
@@ -83,7 +86,7 @@ public class KrathongEntity extends Entity {
         nbt.putBoolean("lit",dataTracker.get(LIT));
         nbt.putInt("tick_alive",dataTracker.get(TICK_ALIVE));
         nbt.putInt("tick_in_water",dataTracker.get(TICK_ALIVE));
-        nbt.put("flower",dataTracker.get(FLOWER_ITEM).writeNbt(new NbtCompound()));
+        nbt.put("flower_item",dataTracker.get(FLOWER_ITEM).writeNbt(new NbtCompound()));
 
     }
 
@@ -123,13 +126,17 @@ public class KrathongEntity extends Entity {
             dataTracker.set(LIT,false);
             return ActionResult.SUCCESS;
         }
+        else if(stack.isIn(ItemTags.FLOWERS))
+        {
+            dataTracker.set(FLOWER_ITEM,stack);
+            return ActionResult.SUCCESS;
+        }
         return super.interact(player, hand);
     }
 
     @Override
     public void tick() {
         super.tick();
-        this.setVelocity(this.getVelocity().multiply(0.95));
         this.isInWater = checkKrathongInWater();
         dataTracker.set(TICK_ALIVE,dataTracker.get(TICK_ALIVE)+1);
         tickToNextVelocity = random.nextBetween(5,600);
@@ -143,6 +150,7 @@ public class KrathongEntity extends Entity {
         }
         if(isInWater)
         {
+            this.setVelocity(this.getVelocity().multiply(0.9));
             this.addVelocity(0,0.02,0);
             this.addVelocity(velocityRandomer);
             dataTracker.set(TICK_INWATER,dataTracker.get(TICK_INWATER)+1);
@@ -151,6 +159,7 @@ public class KrathongEntity extends Entity {
 
         }
         else{
+            this.setVelocity(this.getVelocity().multiply(0.8,1,0.8));
 
             dataTracker.set(TICK_INWATER,0,true);
             this.addVelocity(new Vec3d(0,-0.03,0));
@@ -165,14 +174,37 @@ public class KrathongEntity extends Entity {
         if(dataTracker.get(LIT))
         {
 
-            this.getWorld().addParticle(ParticleTypes.FLAME,true,this.getX()+(0.4848/16f),this.getY()+(9/16f),this.getZ()+(1.5151/16f),0,0,0);
-            this.getWorld().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,true,this.getX()+(-1/16f),this.getY()+(13/16f),this.getZ()+(0.5/16f),0,0.1,0);
-            this.getWorld().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,true,this.getX()+(-2.5/16f),this.getY()+(13/16f),this.getZ()+(-0.5/16f),0,0.1,0);
-            this.getWorld().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,true,this.getX()+(-1.25/16f),this.getY()+(12.25/16f),this.getZ()+(-2/16f),0,0.1,0);
+            this.getWorld().addParticle(ParticleTypes.FLAME,this.getX()+(0.4848/16f),this.getY()+(9/16f),this.getZ()+(1.5151/16f),0,0,0);
+
+            this.getWorld().addParticle(KrathongMod.INCENSE_SMOKE,true,this.getX()+(-1/16f),this.getY()+(13/16f),this.getZ()+(0.5/16f),0,0.1,0);
+            this.getWorld().addParticle(KrathongMod.INCENSE_SMOKE,true,this.getX()+(-2.5/16f),this.getY()+(13/16f),this.getZ()+(-0.5/16f),0,0.1,0);
+            this.getWorld().addParticle(KrathongMod.INCENSE_SMOKE,true,this.getX()+(-1.25/16f),this.getY()+(12.25/16f),this.getZ()+(-2/16f),0,0.1,0);
         }
         //this.setYaw(this.getYaw()+(float) (this.getVelocity().lengthSquared()*300f));
         updatePositionAndAngles(this.getX(),this.getY(),this.getZ(),this.getYaw(),this.getPitch());
 
+    }
+    public void setLit(boolean lit)
+    {
+        this.dataTracker.set(LIT,lit);
+    }
+    public boolean getLit()
+    {
+        return this.dataTracker.get(LIT);
+    }
+    public void setFlower(ItemStack flower)
+    {
+        this.dataTracker.set(FLOWER_ITEM,flower);
+    }
+    public ItemStack getFlower()
+    {
+        return this.dataTracker.get(FLOWER_ITEM);
+    }
+
+    @Nullable
+    @Override
+    public ItemStack getPickBlockStack() {
+        return KrathongMod.KRATHONG_ITEM.getDefaultStack();
     }
 
     @Override
@@ -182,7 +214,10 @@ public class KrathongEntity extends Entity {
         {
             if(!source.isSourceCreativePlayer())
             {
-                dropStack(KrathongMod.KRATHONG_ITEM.getDefaultStack());
+                ItemStack stack = KrathongMod.KRATHONG_ITEM.getDefaultStack();
+                stack.getOrCreateNbt().put("flower_item",dataTracker.get(FLOWER_ITEM).writeNbt(new NbtCompound()));
+                if(this.hasCustomName()) stack.setCustomName(this.getCustomName());
+                dropStack(stack);
             }
             this.discard();
 
